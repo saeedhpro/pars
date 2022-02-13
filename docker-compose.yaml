@@ -1,0 +1,98 @@
+version: "3"
+services:
+  rabbitmq:
+    image: "rabbitmq:3-management-alpine"
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "status" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    environment:
+      RABBITMQ_ERLANG_COOKIE: "RABBITMQ_ERLANG_COOKIE"
+    networks:
+      - pars
+  part:
+    container_name: api_part
+    build:
+      context: ./part
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8002"
+    depends_on:
+      - rabbitmq
+      - mongodb
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: adminminiopassword
+      MINIO_PORT: 9000
+      MONGODB_URI: mongodb:27017
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+    networks:
+      - pars
+  file:
+    container_name: api_file
+    build:
+      context: ./file
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8003"
+    depends_on:
+      - minio
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: adminminiopassword
+      MINIO_PORT: 9000
+    networks:
+      - pars
+  email:
+    container_name: api_email
+    build:
+      context: ./email
+      dockerfile: Dockerfile
+    ports:
+      - "8004:8004"
+    depends_on:
+      - rabbitmq
+    environment:
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+    networks:
+      - pars
+  mongodb:
+    image: mongo
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb:/data/db
+    restart: unless-stopped
+
+  minio:
+    image: "minio/minio"
+    volumes:
+      - ./minio/data:/data
+    command: minio server /data
+    networks:
+      - pars
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: adminminiopassword
+      MINIO_PORT: 9000
+    ports:
+      - "9000:9000"
+    expose:
+      - "9000"
+    restart: always
+
+networks:
+  pars:
+    driver: bridge
+
+volumes:
+  mongodb:
+  rabbitmq:
