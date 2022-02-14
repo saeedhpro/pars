@@ -1,20 +1,20 @@
 version: "3"
 services:
-  rabbitmq:
-    image: "rabbitmq:3-management-alpine"
-    container_name: rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    healthcheck:
-      test: [ "CMD", "rabbitmq-diagnostics", "-q", "status" ]
-      interval: 10s
-      timeout: 10s
-      retries: 5
-    environment:
-      RABBITMQ_ERLANG_COOKIE: "RABBITMQ_ERLANG_COOKIE"
-    networks:
-      - pars
+#  rabbitmq:
+#    image: "rabbitmq:3-management-alpine"
+#    container_name: rabbitmq
+#    ports:
+#      - "5672:5672"
+#      - "15672:15672"
+#    healthcheck:
+#      test: [ "CMD", "rabbitmq-diagnostics", "-q", "status" ]
+#      interval: 10s
+#      timeout: 10s
+#      retries: 5
+#    environment:
+#      RABBITMQ_ERLANG_COOKIE: "RABBITMQ_ERLANG_COOKIE"
+#    networks:
+#      - pars
   part:
     container_name: api_part
     build:
@@ -23,8 +23,8 @@ services:
     ports:
       - "8002:8002"
     depends_on:
-      - rabbitmq
-      - mongodb
+#      - rabbitmq
+      - db
     environment:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: adminminiopassword
@@ -32,6 +32,12 @@ services:
       MONGODB_URI: mongodb:27017
       RABBITMQ_USER: guest
       RABBITMQ_PASSWORD: guest
+      MYSQL_DATABASE: 'parts'
+      MYSQL_USER: 'user'
+      MYSQL_PASSWORD: 'password'
+      MYSQL_ROOT_PASSWORD: 'password'
+      MYSQL_NAME: 'db'
+      MYSQL_PORT: 3306
     networks:
       - pars
   file:
@@ -57,20 +63,39 @@ services:
     ports:
       - "8004:8004"
     depends_on:
-      - rabbitmq
+#      - rabbitmq
+      - db
     environment:
       RABBITMQ_USER: guest
       RABBITMQ_PASSWORD: guest
     networks:
       - pars
-  mongodb:
-    image: mongo
-    container_name: mongodb
+#  mongodb:
+#    image: mongo
+#    container_name: mongodb
+#    ports:
+#      - "27017:27017"
+#    volumes:
+#      - mongodb:/data/db
+#    restart: unless-stopped
+
+  db:
+    image: mysql:5.7
+    restart: always
+    environment:
+      MYSQL_DATABASE: 'parts'
+      MYSQL_USER: 'user'
+      MYSQL_PASSWORD: 'password'
+      MYSQL_ROOT_PASSWORD: 'password'
+    command:
+      --init-file /data/application/init.sql
     ports:
-      - "27017:27017"
+      - "3307:3306"
+    expose:
+      - 3307
     volumes:
-      - mongodb:/data/db
-    restart: unless-stopped
+      - db:/var/lib/mysql
+      - ./mysql/parts.sql:/data/application/init.sql
 
   minio:
     image: "minio/minio"
@@ -94,5 +119,6 @@ networks:
     driver: bridge
 
 volumes:
-  mongodb:
-  rabbitmq:
+#  mongodb:
+#  rabbitmq:
+  db:

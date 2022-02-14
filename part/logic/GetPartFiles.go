@@ -1,15 +1,13 @@
 package logic
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/bson"
-	"part/model"
+	"log"
 	"part/repository"
 )
 
 type GetPartFilesLogic interface {
-	GetPartFiles(ctx *gin.Context) ([]model.Part, error)
+	GetPartFiles(ctx *gin.Context) ([]string, error)
 }
 
 type getPartFilesLogic struct {
@@ -19,27 +17,38 @@ func NewGetPartFilesLogic() GetPartFilesLogic {
 	return &getPartFilesLogic{}
 }
 
-func (u *getPartFilesLogic) GetPartFiles(ctx *gin.Context) ([]model.Part, error) {
-	var parts []model.Part
+func (u *getPartFilesLogic) GetPartFiles(ctx *gin.Context) ([]string, error) {
+	files := []string{}
 	id := ctx.Param("id")
 	if id == "" {
-		return parts, nil
+		return files, nil
 	}
-	project := bson.M{"files": 1, "_id": 0}
-	filter := bson.M{"_id": 1, "$project": project}
-	results, err := repository.DBS.MongoDB.Database("parts").Collection("parts").Find(ctx, filter)
+	return getPartFilesByMySQL(id)
+}
+
+func getPartFilesByMySQL(id string) ([]string, error) {
+	files := []string{}
+	query := "SELECT `part_files`.`name` FROM `part_files` WHERE `part_files`.`part_id` = ?"
+	stmt, err := repository.DBS.MySQL.Prepare(query)
 	if err != nil {
-		fmt.Println(err.Error())
-		return nil, err
+		log.Println(err.Error())
+		return files, nil
 	}
-	var decode interface{}
-	for results.Next(ctx) {
-		err := results.Decode(decode)
+	rows, err := stmt.Query(id)
+	if err != nil {
+		log.Println(err.Error())
+		return files, nil
+	}
+	var partFile string
+	for rows.Next() {
+		err = rows.Scan(
+			&partFile,
+		)
 		if err != nil {
-			fmt.Println(err.Error())
-		} else {
-			parts = append(parts, decode.(model.Part))
+			log.Println(err.Error())
+			return files, nil
 		}
+		files = append(files, partFile)
 	}
-	return parts, nil
+	return files, nil
 }

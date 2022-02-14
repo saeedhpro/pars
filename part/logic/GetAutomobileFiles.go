@@ -1,15 +1,14 @@
 package logic
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/bson"
+	"log"
 	"part/model"
 	"part/repository"
 )
 
 type GetAutomobileFilesLogic interface {
-	GetAutomobileFiles(ctx *gin.Context) ([]model.Part, error)
+	GetAutomobileFiles(ctx *gin.Context) ([]string, error)
 }
 
 type getAutomobileFilesLogic struct {
@@ -19,23 +18,71 @@ func NewGetAutomobileFilesLogic() GetAutomobileFilesLogic {
 	return &getAutomobileFilesLogic{}
 }
 
-func (u *getAutomobileFilesLogic) GetAutomobileFiles(ctx *gin.Context) ([]model.Part, error) {
-	project := bson.M{"files": 1, "_id": 0}
-	filter := bson.M{"automobile_id": 1, "$project": project}
-	results, err := repository.DBS.MongoDB.Database("parts").Collection("parts").Find(ctx, filter)
-	if err != nil {
-		fmt.Println(err.Error())
-		return nil, err
+func (u *getAutomobileFilesLogic) GetAutomobileFiles(ctx *gin.Context) ([]string, error) {
+	id := ctx.Param("id")
+	files := []string{}
+	if id == "" {
+		return files, nil
 	}
-	var parts []model.Part
-	var decode interface{}
-	for results.Next(ctx) {
-		err := results.Decode(decode)
+	files, err := getAutomobileFilesByMySQL(id)
+	if err != nil {
+		return files, nil
+	}
+	return files, nil
+}
+
+func getAutomobileFilesByMySQL(id string) ([]string, error) {
+	files := []string{}
+	query := "SELECT `part_files`.`name` FROM `part_files` LEFT JOIN `parts` on `part_files`.`part_id` = `parts`.`id` WHERE `parts`.`automobile_id` = ?"
+	stmt, err := repository.DBS.MySQL.Prepare(query)
+	if err != nil {
+		log.Println(err.Error())
+		return files, nil
+	}
+	rows, err := stmt.Query(id)
+	if err != nil {
+		log.Println(err.Error())
+		return files, nil
+	}
+	var partFile string
+	for rows.Next() {
+		err = rows.Scan(
+			&partFile,
+		)
 		if err != nil {
-			fmt.Println(err.Error())
-		} else {
-			parts = append(parts, decode.(model.Part))
+			log.Println(err.Error())
+			return files, nil
 		}
+		files = append(files, partFile)
+	}
+	return files, nil
+}
+
+func getAutomobileFilesByMongoDB(id string) ([]model.Part, error) {
+	parts := []model.Part{}
+	query := "SELECT id, name, automobile_id FROM `parts` where automobile_id = ?"
+	stmt, err := repository.DBS.MySQL.Prepare(query)
+	if err != nil {
+		log.Println(err.Error())
+		return parts, nil
+	}
+	rows, err := stmt.Query(id)
+	if err != nil {
+		log.Println(err.Error())
+		return parts, nil
+	}
+	part := model.Part{}
+	for rows.Next() {
+		err = rows.Scan(
+			&part.ID,
+			&part.Name,
+			&part.AutomobileID,
+		)
+		if err != nil {
+			log.Println(err.Error())
+			return parts, nil
+		}
+		parts = append(parts, part)
 	}
 	return parts, nil
 }
