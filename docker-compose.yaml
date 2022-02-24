@@ -1,20 +1,24 @@
 version: "3"
 services:
-#  rabbitmq:
-#    image: "rabbitmq:3-management-alpine"
-#    container_name: rabbitmq
-#    ports:
-#      - "5672:5672"
-#      - "15672:15672"
-#    healthcheck:
-#      test: [ "CMD", "rabbitmq-diagnostics", "-q", "status" ]
-#      interval: 10s
-#      timeout: 10s
-#      retries: 5
-#    environment:
-#      RABBITMQ_ERLANG_COOKIE: "RABBITMQ_ERLANG_COOKIE"
-#    networks:
-#      - pars
+  automobile:
+    container_name: api_automobile
+    build:
+      context: ./automobile
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    depends_on:
+      - automobile_db
+    environment:
+      MYSQL_DATABASE: 'automobiles'
+      MYSQL_USER: 'user'
+      MYSQL_PASSWORD: 'password'
+      MYSQL_ROOT_USER: 'root'
+      MYSQL_ROOT_PASSWORD: 'password'
+      MYSQL_NAME: 'automobile_db'
+      MYSQL_PORT: 3306
+    networks:
+      - pars
   part:
     container_name: api_part
     build:
@@ -23,20 +27,17 @@ services:
     ports:
       - "8002:8002"
     depends_on:
-#      - rabbitmq
-      - db
+      - part_db
     environment:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: adminminiopassword
       MINIO_PORT: 9000
-      MONGODB_URI: mongodb:27017
-      RABBITMQ_USER: guest
-      RABBITMQ_PASSWORD: guest
       MYSQL_DATABASE: 'parts'
       MYSQL_USER: 'user'
       MYSQL_PASSWORD: 'password'
+      MYSQL_ROOT_USER: 'root'
       MYSQL_ROOT_PASSWORD: 'password'
-      MYSQL_NAME: 'db'
+      MYSQL_NAME: 'part_db'
       MYSQL_PORT: 3306
     networks:
       - pars
@@ -53,6 +54,8 @@ services:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: adminminiopassword
       MINIO_PORT: 9000
+    volumes:
+      - ./files:/app/files
     networks:
       - pars
   email:
@@ -62,24 +65,18 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8004:8004"
-    depends_on:
-#      - rabbitmq
-      - db
     environment:
-      RABBITMQ_USER: guest
-      RABBITMQ_PASSWORD: guest
+      MAIL_MAILER: smtp
+      MAIL_HOST: smtp.mailtrap.io
+      MAIL_PORT: 2525
+      MAIL_USERNAME: d249da118a74c5
+      MAIL_PASSWORD: 771fcfdb6ca331
+      MAIL_ENCRYPTION: tls
     networks:
       - pars
-#  mongodb:
-#    image: mongo
-#    container_name: mongodb
-#    ports:
-#      - "27017:27017"
-#    volumes:
-#      - mongodb:/data/db
-#    restart: unless-stopped
 
-  db:
+  part_db:
+    container_name: part_db
     image: mysql:5.7
     restart: always
     environment:
@@ -88,14 +85,37 @@ services:
       MYSQL_PASSWORD: 'password'
       MYSQL_ROOT_PASSWORD: 'password'
     command:
-      --init-file /data/application/init.sql
+      --default-authentication-plugin=mysql_native_password
     ports:
       - "3307:3306"
     expose:
       - 3307
     volumes:
-      - db:/var/lib/mysql
-      - ./mysql/parts.sql:/data/application/init.sql
+      - ./parts_db/:/docker-entrypoint-initdb.d/
+      - ./part_db:/var/lib/mysql:rw
+    networks:
+      - pars
+
+  automobile_db:
+    container_name: automobile_db
+    image: mysql:5.7
+    restart: always
+    environment:
+      MYSQL_DATABASE: 'automobiles'
+      MYSQL_USER: 'user'
+      MYSQL_PASSWORD: 'password'
+      MYSQL_ROOT_PASSWORD: 'password'
+    command:
+      --default-authentication-plugin=mysql_native_password
+    ports:
+      - "3308:3306"
+    expose:
+      - 3308
+    volumes:
+      - ./automobiles_db/:/docker-entrypoint-initdb.d/
+      - ./automobile_db:/var/lib/mysql:rw
+    networks:
+      - pars
 
   minio:
     image: "minio/minio"
@@ -108,6 +128,7 @@ services:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: adminminiopassword
       MINIO_PORT: 9000
+      MINIO_DEFAULT_BUCKETS: "pars"
     ports:
       - "9000:9000"
     expose:
@@ -119,6 +140,8 @@ networks:
     driver: bridge
 
 volumes:
-#  mongodb:
-#  rabbitmq:
-  db:
+  part_db:
+  parts_db:
+  automobile_db:
+  automobiles_db:
+  files:

@@ -26,7 +26,7 @@ func Init() {
 }
 
 func mysqlConnection() {
-	uri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", os.Getenv("MYSQL_USER"), os.Getenv("MYSQL_PASSWORD"), os.Getenv("MYSQL_NAME"), os.Getenv("MYSQL_PORT"), os.Getenv("MYSQL_DATABASE"))
+	uri := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", os.Getenv("MYSQL_ROOT_USER"), os.Getenv("MYSQL_ROOT_PASSWORD"), os.Getenv("MYSQL_NAME"), os.Getenv("MYSQL_PORT"), os.Getenv("MYSQL_DATABASE"))
 	db, err := sql.Open("mysql", uri)
 	if err != nil {
 		fmt.Println(err.Error())

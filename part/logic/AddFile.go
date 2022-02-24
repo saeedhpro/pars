@@ -1,11 +1,13 @@
 package logic
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"log"
+	"net/http"
+	"part/helper"
 	"part/repository"
 	"part/requests"
 )
@@ -23,45 +25,44 @@ func NewAddFileLogic() AddFileLogic {
 
 func (u *addFileLogic) AddFile(ctx *gin.Context) (*string, error) {
 	id := ctx.Param("id")
-	if id == "" {
+	part := helper.GetPart(id)
+	if part == nil {
+		fmt.Println("part nil")
 		return nil, nil
 	}
 	var request requests.AddFileRequest
-	if err := ctx.ShouldBindJSON(request); err != nil {
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		fmt.Println("part nil")
 		return nil, err
 	}
-	fmt.Println(request.Name)
-	return addFileByMySQL(id, request)
+	return addFileByMySQL(id, request.Name)
 }
 
-func addFileByMySQL(id string, request requests.AddFileRequest) (*string, error) {
+func addFileByMySQL(id string, name string) (*string, error) {
 	query := "INSERT INTO `part_files`(`part_id`, `name`) VALUES (?,?)"
 	stmt, err := repository.DBS.MySQL.Prepare(query)
 	if err != nil {
 		log.Println(err.Error())
 		return nil, err
 	}
-	_, err = stmt.Exec(id, request.Name)
+	_, err = stmt.Exec(id, name)
 	if err != nil {
 		log.Println(err.Error())
 		return nil, err
 	}
-	return &request.Name, nil
+	go sendEmail(id, name)
+	return &name, nil
 }
 
-func addFileByMongoDB(ctx *gin.Context, id string, request requests.AddFileRequest) (*string, error) {
-	oid, _ := primitive.ObjectIDFromHex(id)
-	filter := bson.M{"_id": oid}
-	update := bson.M{
-		"$addToSet": bson.M{
-			"files": request.Name,
-		},
+func sendEmail(id string, name string) {
+	body := requests.SendMailRequestOnPartAdded{
+		PartID: id,
+		File:   name,
 	}
-	res := repository.DBS.MongoDB.Database("parts").Collection("parts").FindOneAndUpdate(
-		*repository.DBS.Context,
-		filter,
-		update,
-	)
-	fmt.Println(res)
-	return &request.Name, nil
+	jsonData, err := json.Marshal(body)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	http.Post(fmt.Sprintf("%s/email/send", "http://email:8004"), "application/json", bytes.NewBuffer(jsonData))
 }

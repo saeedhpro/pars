@@ -2,6 +2,7 @@ package http
 
 import (
 	"file/controller"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -11,10 +12,11 @@ func Run(port string) {
 
 	files := engine.Group("files")
 
-	fileApi := NewFileApi(controller.UploadFile, controller.GetFile, controller.GetFiles)
+	fileApi := NewFileApi(controller.SingleDownloadFile, controller.UploadFile, controller.GetFile, controller.GetFiles)
 
 	files.POST("/", fileApi.UploadFile)
-	files.POST("/file", fileApi.GetFile)
+	files.GET("/file/:name", fileApi.GetFile)
+	files.GET("/file/:name/download", fileApi.SingleDownloadFile)
 	files.POST("/files", fileApi.GetFiles)
 	_ = engine.Run(port)
 }

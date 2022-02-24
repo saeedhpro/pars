@@ -2,11 +2,10 @@ package logic
 
 import (
 	minio2 "file/minio"
-	"file/requests"
+	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/minio/minio-go/v7"
 	"log"
-	"net/url"
-	"time"
 )
 
 type GetFileLogic interface {
@@ -21,16 +20,15 @@ func NewGetFileLogic() GetFileLogic {
 }
 
 func (u *getFileLogic) GetFile(ctx *gin.Context) (*string, error) {
-	var request requests.GetFileRequest
-	if err := ctx.ShouldBindJSON(request); err != nil {
-		log.Println(err.Error())
-		return nil, err
+	name := ctx.Param("name")
+	if name == "" {
+		return nil, nil
 	}
-	reqParams := make(url.Values)
-	preSignedURL, err := minio2.Client.PresignedGetObject(ctx, minio2.BucketName, request.Name, time.Second*24*60*60, reqParams)
+	path := fmt.Sprintf("/tmp/%s", name)
+	err := minio2.Client.FGetObject(ctx, minio2.BucketName, name, path, minio.GetObjectOptions{})
 	if err != nil {
 		log.Println(err.Error())
 		return nil, err
 	}
-	return &preSignedURL.RawPath, nil
+	return &path, nil
 }

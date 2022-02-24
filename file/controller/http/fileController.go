@@ -3,30 +3,35 @@ package http
 import (
 	"file/logic"
 	"fmt"
+
 	"github.com/gin-gonic/gin"
 )
 
 type FileHandler interface {
 	UploadFile(c *gin.Context)
 	GetFile(c *gin.Context)
+	SingleDownloadFile(c *gin.Context)
 	GetFiles(c *gin.Context)
 }
 
 type fileApi struct {
-	uploadFileLogic logic.UploadFileLogic
-	getFileLogic    logic.GetFileLogic
-	getFilesLogic   logic.GetFilesLogic
+	singleDownloadFile logic.DownloadSingleFileLogic
+	uploadFileLogic    logic.UploadFileLogic
+	getFileLogic       logic.GetFileLogic
+	getFilesLogic      logic.GetFilesLogic
 }
 
 func NewFileApi(
+	singleDownloadFile logic.DownloadSingleFileLogic,
 	uploadFileLogic logic.UploadFileLogic,
 	getFileLogic logic.GetFileLogic,
 	getFilesLogic logic.GetFilesLogic,
 ) *fileApi {
 	return &fileApi{
-		uploadFileLogic: uploadFileLogic,
-		getFileLogic:    getFileLogic,
-		getFilesLogic:   getFilesLogic,
+		singleDownloadFile: singleDownloadFile,
+		uploadFileLogic:    uploadFileLogic,
+		getFileLogic:       getFileLogic,
+		getFilesLogic:      getFilesLogic,
 	}
 }
 
@@ -40,12 +45,22 @@ func (api *fileApi) UploadFile(c *gin.Context) {
 }
 
 func (api *fileApi) GetFile(c *gin.Context) {
-	url, err := api.getFileLogic.GetFile(c)
+	path, err := api.getFileLogic.GetFile(c)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-	c.JSON(200, url)
+	c.File(*path)
 	return
+}
+
+func (api *fileApi) SingleDownloadFile(c *gin.Context) {
+	path, err := api.singleDownloadFile.DownloadSingleFile(c)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	c.File(*path)
+	return
+
 }
 
 func (api *fileApi) GetFiles(c *gin.Context) {

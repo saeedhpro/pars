@@ -1,12 +1,12 @@
 package logic
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/bson"
 	"log"
+	"part/helper"
 	"part/model"
 	"part/repository"
+	"strconv"
 )
 
 type GetAutomobilePartsLogic interface {
@@ -29,6 +29,10 @@ func (u *getAutomobilePartsLogic) GetAutomobileParts(ctx *gin.Context) ([]model.
 	parts, err := getAutomobilePartsByMySQL(id)
 	if err != nil {
 		return parts, nil
+	}
+	for i := 0; i < len(parts); i++ {
+		files := helper.GetPartFiles(strconv.FormatInt(parts[i].ID, 10))
+		parts[i].Files = files
 	}
 	return parts, nil
 }
@@ -59,27 +63,5 @@ func getAutomobilePartsByMySQL(id string) ([]model.Part, error) {
 		}
 		parts = append(parts, part)
 	}
-	return parts, nil
-}
-
-func getAutomobilePartsByMongodb(ctx *gin.Context, id string) ([]model.Part, error) {
-	parts := []model.Part{}
-	filter := bson.M{"automobile_id": id}
-	cursor, err := repository.DBS.MongoDB.Database("parts").Collection("parts").Find(*repository.DBS.Context, filter)
-	if err != nil {
-		log.Fatal(err)
-		return parts, err
-	}
-	defer cursor.Close(ctx)
-
-	for cursor.Next(ctx) {
-		var item model.Part
-		if err = cursor.Decode(&item); err != nil {
-			log.Fatal(err)
-			return parts, err
-		}
-		parts = append(parts, item)
-	}
-	fmt.Println(parts)
 	return parts, nil
 }

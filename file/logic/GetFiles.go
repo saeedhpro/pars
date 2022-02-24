@@ -4,6 +4,7 @@ import (
 	minio2 "file/minio"
 	"file/requests"
 	"github.com/gin-gonic/gin"
+	_ "github.com/minio/minio-go/v7"
 	"log"
 	"net/url"
 	"time"

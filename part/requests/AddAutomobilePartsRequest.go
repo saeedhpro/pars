@@ -1,7 +1,9 @@
 package requests
 
-import "part/model"
-
 type AddAutomobilePartsRequest struct {
-	Parts []model.Part `json:"parts"`
+	Parts []AddAutomobilePart `json:"parts"`
+}
+
+type AddAutomobilePart struct {
+	Name string `json:"name"`
 }

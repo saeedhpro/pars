@@ -1,7 +1,5 @@
 package requests
 
-import "email/model"
-
 type SendMailRequest struct {
 	From    string   `json:"from"`
 	To      []string `json:"to"`
@@ -10,5 +8,6 @@ type SendMailRequest struct {
 }
 
 type EmailRequest struct {
-	Automobile model.Automobile `json:"automobile"`
+	PartID string `json:"part_id"`
+	File   string `json:"file"`
 }

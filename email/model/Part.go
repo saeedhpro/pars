@@ -1,7 +1,7 @@
 package model
 
 type Part struct {
-	AutomobileID int      `bson:"automobile_id,omitempty"`
-	Name         string   `bson:"name,omitempty"`
-	Files        []string `bson:"files,omitempty"`
+	ID           int    `json:"id,omitempty"`
+	AutomobileID int    `json:"automobile_id,omitempty"`
+	Name         string `json:"name,omitempty"`
 }
